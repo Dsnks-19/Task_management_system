@@ -1,0 +1,871 @@
+{% extends "base.html" %}
+{% block title %}{{ board.name }} - Task Management System{% endblock %}
+{% block head %}
+<style>
+    body {
+        background-color: #f8f9fa;
+    }
+    .container {
+        max-width: 1200px;
+        margin-top: 30px;
+    }
+    .board-header {
+        background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+        color: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .board-actions {
+        gap: 8px;
+    }
+    .board-actions .btn {
+        border-radius: 6px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    .stats-card {
+        text-align: center;
+        padding: 18px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        color: white;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s;
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+    }
+    .stats-active { 
+        background: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%);
+    }
+    .stats-completed { 
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    }
+    .stats-total { 
+        background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+    }
+    .stats-card h3 {
+        font-size: 2.4rem;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+    .stats-card p {
+        font-size: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        opacity: 0.9;
+    }
+    .content-card {
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        overflow: hidden;
+        height: 100%;
+    }
+    .card-header {
+        background-color: #fff;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        padding: 15px 20px;
+    }
+    .task-card {
+        border-radius: 10px;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        margin-bottom: 15px;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+    .task-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+    .task-completed {
+        background-color: #d1e7dd !important;
+        border-left: 5px solid #198754;
+    }
+    .task-unassigned {
+        background-color: #fff3f3 !important;
+        border-left: 5px solid #dc3545;
+    }
+    .task-normal {
+        border-left: 5px solid #0d6efd;
+    }
+    .due-date {
+        font-size: 0.85rem;
+        color: #6c757d;
+        display: flex;
+        align-items: center;
+    }
+    .due-date i {
+        margin-right: 5px;
+    }
+    .task-actions {
+        display: flex;
+        gap: 5px;
+    }
+    .task-actions .btn {
+        border-radius: 6px;
+    }
+    .badge {
+        padding: 6px 10px;
+        border-radius: 20px;
+        font-weight: 500;
+    }
+    .modal-content {
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+    .modal-header {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        padding: 20px;
+    }
+    .modal-footer {
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+        padding: 20px;
+    }
+    .form-control, .form-select {
+        border-radius: 8px;
+        padding: 10px 15px;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    .btn-primary {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+    }
+    .btn-primary:hover {
+        background-color: #0b5ed7;
+        border-color: #0b5ed7;
+    }
+    .list-group-item {
+        border-radius: 8px !important;
+        margin-bottom: 8px;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        padding: 12px 15px;
+    }
+    .list-group {
+        margin-bottom: 0;
+    }
+    .complete-button {
+        width: 100%;
+        text-align: left;
+        display: flex;
+        align-items: center;
+    }
+    .complete-button i {
+        margin-right: 8px;
+    }
+    .member-avatar {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background-color: #e9ecef;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 5px;
+        font-weight: bold;
+        color: #495057;
+    }
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+{% endblock %}
+{% block content %}
+<div class="container" data-board-id="{{ board.id }}">
+    <!-- Board Header -->
+    <div class="board-header d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="mb-1">{{ board.name }}</h2>
+            {% if is_owner %}
+                <span class="badge bg-warning text-dark">Owner</span>
+            {% else %}
+                <span class="badge bg-secondary">Member</span>
+            {% endif %}
+        </div>
+        <div class="d-flex board-actions">
+            {% if is_owner %}
+                <button type="button" class="btn btn-light" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                    <i class="fas fa-user-plus me-2"></i>Add User
+                </button>
+                <button type="button" class="btn btn-light" data-bs-toggle="modal" data-bs-target="#renameBoardModal">
+                    <i class="fas fa-edit me-2"></i>Rename
+                </button>
+                {% if members|length == 1 and tasks|length == 0 %}
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteBoardModal">
+                        <i class="fas fa-trash-alt me-2"></i>Delete Board
+                    </button>
+                {% endif %}
+            {% endif %}
+            <a href="/boards" class="btn btn-light">
+                <i class="fas fa-arrow-left me-2"></i>Back to Boards
+            </a>
+        </div>
+    </div>
+    
+    <!-- Stats Row -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="stats-card stats-active">
+                <h3 id="active-tasks-count">{{ active_tasks }}</h3>
+                <p class="mb-0">Active Tasks</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stats-card stats-completed">
+                <h3 id="completed-tasks-count">{{ completed_tasks }}</h3>
+                <p class="mb-0">Completed Tasks</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stats-card stats-total">
+                <h3 id="total-tasks-count">{{ total_tasks }}</h3>
+                <p class="mb-0">Total Tasks</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Tasks Column -->
+        <div class="col-md-8 mb-4">
+            <div class="card content-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-tasks me-2"></i>Tasks</h5>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTaskModal">
+                        <i class="fas fa-plus me-2"></i>Add Task
+                    </button>
+                </div>
+                <div class="card-body p-3">
+                    {% if tasks %}
+                        {% for task in tasks %}
+                            <div class="card task-card {% if task.completed %}task-completed{% elif task.assigned_to|length == 0 %}task-unassigned{% else %}task-normal{% endif %}" 
+                                 data-task-id="{{ task.id }}" data-completed="{{ task.completed|lower }}">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h5 class="card-title mb-1">{{ task.title }}</h5>
+                                            <p class="card-text due-date mb-2">
+                                                <i class="far fa-calendar-alt"></i>
+                                                Due: {{ task.due_date.strftime("%Y-%m-%d %H:%M") }}
+                                            </p>
+                                            <div>
+                                            {% if task.assigned_to %}
+                                                <small>
+                                                    <i class="fas fa-user-check me-1"></i>
+                                                    {% for member_id in task.assigned_to %}
+                                                        {% for member in members %}
+                                                            {% if member.id == member_id %}
+                                                                <span class="member-avatar">{{ member.display_name[0] }}</span>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    {% endfor %}
+                                                </small>
+                                            {% else %}
+                                                <small class="text-danger">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>Unassigned
+                                                </small>
+                                            {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="task-actions">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#editTaskModal"
+                                                    data-task-id="{{ task.id }}"
+                                                    data-task-title="{{ task.title }}"
+                                                    data-task-due-date="{{ task.due_date.isoformat() }}"
+                                                    data-task-assigned-to="{{ task.assigned_to|tojson }}">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#deleteTaskModal"
+                                                    data-task-id="{{ task.id }}"
+                                                    data-task-title="{{ task.title }}">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-3">
+                                        {% if task.completed %}
+                                            <form action="/boards/{{ board.id }}/tasks/{{ task.id }}/toggle-complete" method="post">
+                                                <input type="hidden" name="completed" value="false">
+                                                <button type="submit" class="btn btn-sm btn-success complete-button">
+                                                    <i class="fas fa-check-circle"></i>
+                                                    Completed on {{ task.completed_at.strftime("%Y-%m-%d %H:%M") }}
+                                                </button>
+                                            </form>
+                                        {% else %}
+                                            <form action="/boards/{{ board.id }}/tasks/{{ task.id }}/toggle-complete" method="post">
+                                                <input type="hidden" name="completed" value="true">
+                                                <button type="submit" class="btn btn-sm btn-outline-success complete-button">
+                                                    <i class="far fa-check-circle"></i>
+                                                    Mark as Complete
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-clipboard-list fa-3x mb-3 text-muted"></i>
+                            <p class="text-muted">No tasks yet. Add one to get started!</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Members Column -->
+        <div class="col-md-4 mb-4">
+            <div class="card content-card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-users me-2"></i>Board Members</h5>
+                </div>
+                <div class="card-body p-3">
+                    <ul class="list-group">
+                        {% for member in members %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    <div class="member-avatar me-2">{{ member.display_name[0] }}</div>
+                                    {{ member.display_name }}
+                                </div>
+                                {% if member.id == board.created_by %}
+                                    <span class="badge bg-warning text-dark">Owner</span>
+                                {% elif is_owner and member.id != user.id %}
+                                    <button type="button" class="btn btn-sm btn-outline-danger" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#removeUserModal"
+                                            data-user-id="{{ member.id }}"
+                                            data-user-name="{{ member.display_name }}">
+                                        <i class="fas fa-user-minus"></i>
+                                    </button>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add Task Modal -->
+    <div class="modal fade" id="addTaskModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-plus-circle me-2"></i>Add New Task</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="/boards/{{ board.id }}/add-task" method="post" id="add-task-form">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="task-title" class="form-label">Task Title</label>
+                            <input type="text" class="form-control" id="task-title" name="title" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="task-due-date" class="form-label">Due Date</label>
+                            <input type="datetime-local" class="form-control" id="task-due-date" name="due_date" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="task-assigned-to" class="form-label">Assigned To</label>
+                            <select class="form-select" id="task-assigned-to" name="assigned_to" multiple>
+                                {% for member in members %}
+                                    <option value="{{ member.id }}">{{ member.display_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="form-text text-muted">Hold Ctrl (or Cmd) to select multiple users</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Add Task
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Edit Task Modal -->
+    <div class="modal fade" id="editTaskModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Edit Task</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="edit-task-form" method="post">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="edit-task-title" class="form-label">Title</label>
+                            <input type="text" class="form-control" id="edit-task-title" name="title" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-task-description" class="form-label">Description</label>
+                            <textarea class="form-control" id="edit-task-description" name="description" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-task-due-date" class="form-label">Due Date</label>
+                            <input type="datetime-local" class="form-control" id="edit-task-due-date" name="due_date" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-task-assigned-to" class="form-label">Assign To</label>
+                            <select class="form-select" id="edit-task-assigned-to" name="assigned_to" multiple>
+                                {% for member in members %}
+                                <option value="{{ member.id }}">{{ member.display_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div id="edit-task-error" class="alert alert-danger d-none"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Delete Task Modal -->
+    <div class="modal fade" id="deleteTaskModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-trash-alt me-2"></i>Delete Task</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete task: <strong><span id="delete-task-title"></span></strong>?</p>
+                    <p class="text-danger"><i class="fas fa-exclamation-triangle me-2"></i>This action cannot be undone.</p>
+                    <div id="delete-task-error" class="alert alert-danger d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form id="delete-task-form" method="post">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash-alt me-2"></i>Delete Task
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add User Modal -->
+    <div class="modal fade" id="addUserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Add User to Board</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="add-user-form" action="/boards/{{ board.id }}/add-user" method="post">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="user-email" class="form-label">User Email</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                <input type="email" 
+                                       class="form-control" 
+                                       id="user-email" 
+                                       name="user_email" 
+                                       required 
+                                       pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$">
+                            </div>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Enter the email address of the user you want to add to this board.
+                                If the user doesn't exist, they will be created automatically.
+                            </div>
+                        </div>
+                        <div id="add-user-error" class="alert alert-danger d-none"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-user-plus me-2"></i>Add User
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Remove User Modal -->
+    <div class="modal fade" id="removeUserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-user-minus me-2"></i>Remove User from Board</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to remove <strong><span id="remove-user-name"></span></strong> from this board?</p>
+                    <p class="text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Note: All tasks assigned to this user will be unassigned.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form id="remove-user-form" method="post">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-user-minus me-2"></i>Remove
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Rename Board Modal -->
+    <div class="modal fade" id="renameBoardModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Rename Board</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="/boards/{{ board.id }}/rename" method="post">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="new-board-name" class="form-label">New Board Name</label>
+                            <input type="text" class="form-control" id="new-board-name" name="new_name" 
+                                   value="{{ board.name }}" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Delete Board Modal -->
+    <div class="modal fade" id="deleteBoardModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-trash-alt me-2"></i>Delete Board</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete the board: <strong>{{ board.name }}</strong>?</p>
+                    <p class="text-danger"><i class="fas fa-exclamation-triangle me-2"></i>This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form action="/boards/{{ board.id }}/delete" method="post">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash-alt me-2"></i>Delete
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+    // Handle remove user functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const removeUserModal = document.getElementById('removeUserModal');
+    if (removeUserModal) {
+        removeUserModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const userId = button.getAttribute('data-user-id');
+            const userName = button.getAttribute('data-user-name');
+            
+            this.querySelector('#remove-user-name').textContent = userName;
+            const form = this.querySelector('#remove-user-form');
+            form.action = `/boards/${boardId}/remove-user/${userId}`;
+        });
+        const removeUserForm = document.getElementById('remove-user-form');
+        removeUserForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitButton = this.querySelector('button[type="submit"]');
+            const errorDiv = document.getElementById('remove-user-error');
+            
+            try {
+                // Disable submit button while processing
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Removing...';
+                
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                if (!data.success) {
+                    throw new Error(data.message || 'Failed to remove user');
+                }
+                // Success
+                const modalInstance = bootstrap.Modal.getInstance(removeUserModal);
+                modalInstance.hide();
+                showNotification('success', 'User removed successfully');
+                setTimeout(() => window.location.reload(), 1000);
+            } catch (error) {
+                errorDiv.textContent = error.message;
+                errorDiv.classList.remove('d-none');
+            } finally {
+                // Re-enable submit button
+                submitButton.disabled = false;
+                submitButton.innerHTML = '<i class="fas fa-user-minus me-2"></i>Remove';
+            }
+        });
+        // Clear error message when modal is hidden
+        removeUserModal.addEventListener('hidden.bs.modal', function () {
+            const errorDiv = document.getElementById('remove-user-error');
+            errorDiv.textContent = '';
+            errorDiv.classList.add('d-none');
+        });
+    }
+});
+// Make sure boardId is available
+const boardId = document.querySelector('[data-board-id]')?.dataset.boardId;
+if (!boardId) {
+    console.error('Board ID not found in the page');
+}
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle add user form submission
+        // Handle add user form submission
+const addUserForm = document.getElementById('add-user-form');
+if (addUserForm) {
+    addUserForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const submitButton = this.querySelector('button[type="submit"]');
+        const errorDiv = document.getElementById('add-user-error');
+        const formData = new FormData(this);
+        
+        try {
+            // Disable submit button while processing
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Adding...';
+            
+            const response = await fetch(this.action, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.message || 'Failed to add user');
+            }
+            // Success - reload the page to show updated member list
+            window.location.reload();
+        } catch (error) {
+            errorDiv.textContent = error.message;
+            errorDiv.classList.remove('d-none');
+        } finally {
+            submitButton.disabled = false;
+            submitButton.innerHTML = '<i class="fas fa-user-plus me-2"></i>Add User';
+        }
+    });
+}
+        function showError(message) {
+            const errorAlert = document.createElement('div');
+            errorAlert.className = 'alert alert-danger alert-dismissible fade show';
+            errorAlert.role = 'alert';
+            errorAlert.innerHTML = `
+                <i class="fas fa-exclamation-circle me-2"></i>${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            
+            // Insert at the top of the content
+            const container = document.querySelector('.container');
+            container.insertBefore(errorAlert, container.firstChild);
+    
+            // Auto dismiss after 5 seconds
+            setTimeout(() => {
+                errorAlert.classList.remove('show');
+                setTimeout(() => errorAlert.remove(), 150);
+            }, 5000);
+        }
+        
+        // Create notification function
+        function showNotification(type, message) {
+            const notifAlert = document.createElement('div');
+            notifAlert.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+            notifAlert.style.top = '20px';
+            notifAlert.style.right = '20px';
+            notifAlert.style.zIndex = '9999';
+            notifAlert.role = 'alert';
+            
+            const icon = type === 'success' ? 'check-circle' : 'exclamation-circle';
+            
+            notifAlert.innerHTML = `
+                <i class="fas fa-${icon} me-2"></i>${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            
+            document.body.appendChild(notifAlert);
+            
+            // Auto dismiss after 3 seconds
+            setTimeout(() => {
+                notifAlert.classList.remove('show');
+                setTimeout(() => notifAlert.remove(), 150);
+            }, 3000);
+        }
+    });
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize date inputs
+    const now = new Date();
+    const nowStr = now.toISOString().slice(0, 16);
+    document.getElementById('task-due-date').value = nowStr;
+    
+    // Edit Task Modal
+    const editTaskModal = document.getElementById('editTaskModal');
+    editTaskModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const taskId = button.getAttribute('data-task-id');
+        const taskTitle = button.getAttribute('data-task-title');
+        const taskDueDate = button.getAttribute('data-task-due-date');
+        const taskAssignedTo = JSON.parse(button.getAttribute('data-task-assigned-to') || '[]');
+        
+        this.querySelector('#edit-task-title').value = taskTitle;
+        this.querySelector('#edit-task-due-date').value = taskDueDate.slice(0, 16);
+        
+        const selectElement = this.querySelector('#edit-task-assigned-to');
+        Array.from(selectElement.options).forEach(option => {
+            option.selected = taskAssignedTo.includes(option.value);
+        });
+        
+        this.querySelector('#edit-task-form').action = `/boards/{{ board.id }}/tasks/${taskId}/edit`;
+    });
+    
+    // Delete Task Modal
+    const deleteTaskModal = document.getElementById('deleteTaskModal');
+    deleteTaskModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const taskId = button.getAttribute('data-task-id');
+        const taskTitle = button.getAttribute('data-task-title');
+        
+        this.querySelector('#delete-task-title').textContent = taskTitle;
+        this.querySelector('#delete-task-form').action = `/boards/{{ board.id }}/tasks/${taskId}/delete`;
+    });
+    
+    // Remove User Modal
+    const removeUserModal = document.getElementById('removeUserModal');
+    removeUserModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const userId = button.getAttribute('data-user-id');
+        const userName = button.getAttribute('data-user-name');
+        
+        this.querySelector('#remove-user-name').textContent = userName;
+        this.querySelector('#remove-user-form').action = `/boards/{{ board.id }}/remove-user/${userId}`;
+    });
+    
+    // Form validations
+    const addTaskForm = document.getElementById('add-task-form');
+    addTaskForm.addEventListener('submit', function(e) {
+        const title = this.querySelector('[name="title"]').value.trim();
+        const dueDate = new Date(this.querySelector('[name="due_date"]').value);
+        const now = new Date();
+        
+        if (!title) {
+            e.preventDefault();
+            showError('Task title cannot be empty');
+            return;
+        }
+        
+        if (dueDate < now) {
+            e.preventDefault();
+            showError('Due date cannot be in the past');
+            return;
+        }
+    });
+});
+// Update task counters
+function updateTaskCounters() {
+    const tasks = document.querySelectorAll('.task-card');
+    let activeCount = 0;
+    let completedCount = 0;
+    
+    tasks.forEach(task => {
+        if (task.classList.contains('task-completed')) {
+            completedCount++;
+        } else {
+            activeCount++;
+        }
+    });
+    
+    document.getElementById('active-tasks-count').textContent = activeCount;
+    document.getElementById('completed-tasks-count').textContent = completedCount;
+    document.getElementById('total-tasks-count').textContent = tasks.length;
+}
+// Handle task completion toggle
+document.querySelectorAll('form[action*="/toggle-complete"]').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        fetch(this.action, {
+            method: 'POST',
+            body: new FormData(this)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const taskCard = this.closest('.task-card');
+                taskCard.classList.toggle('task-completed');
+                updateTaskCounters();
+                location.reload(); // Refresh to update UI
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showError('Failed to update task status');
+        });
+    });
+});
+
+// Add hover effects for buttons
+document.querySelectorAll('.btn').forEach(btn => {
+    btn.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateY(-2px)';
+    });
+    btn.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateY(0)';
+    });
+});
+
+// Add task card focus effect
+document.querySelectorAll('.task-card').forEach(card => {
+    card.addEventListener('click', function(e) {
+        // Don't apply focus if clicking a button or form element
+        if (!e.target.closest('button') && !e.target.closest('form')) {
+            document.querySelectorAll('.task-card').forEach(c => {
+                c.style.borderWidth = '1px';
+                c.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.05)';
+            });
+            this.style.borderWidth = '1px';
+            this.style.boxShadow = '0 0 0 3px rgba(13, 110, 253, 0.25), 0 5px 15px rgba(0, 0, 0, 0.1)';
+        }
+    });
+});
+
+// Show "No tasks" message with animation if needed
+if (document.querySelectorAll('.task-card').length === 0) {
+    const noTasksMessage = document.querySelector('.text-center.py-5');
+    if (noTasksMessage) {
+        noTasksMessage.style.opacity = '0';
+        noTasksMessage.style.transition = 'opacity 0.5s ease';
+        setTimeout(() => {
+            noTasksMessage.style.opacity = '1';
+        }, 500);
+    }
+}
+</script>
+{% endblock %}

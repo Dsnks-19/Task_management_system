@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Register - Task Management System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">Register</h4>
+            </div>
+            <div class="card-body">
+                <form id="register-form">
+                    <div class="mb-3">
+                        <label for="display-name" class="form-label">Display Name</label>
+                        <input type="text" class="form-control" id="display-name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" required>
+                        <div class="form-text">Password must be at least 6 characters long.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirm-password" class="form-label">Confirm Password</label>
+                        <input type="password" class="form-control" id="confirm-password" required>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Register</button>
+                        <a href="/" class="btn btn-outline-secondary">Back to Login</a>
+                    </div>
+                </form>
+                <div id="register-error" class="alert alert-danger mt-3" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/tasks.js"></script>
+<script>
+document.getElementById('register-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const displayName = document.getElementById('display-name').value;
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirm-password').value;
+    const errorElement = document.getElementById('register-error');
+    
+    // Password validation
+    if (password.length < 6) {
+        errorElement.textContent = "Password must be at least 6 characters long";
+        errorElement.style.display = 'block';
+        return;
+    }
+    
+    if (password !== confirmPassword) {
+        errorElement.textContent = "Passwords do not match";
+        errorElement.style.display = 'block';
+        return;
+    }
+    
+    // Call the registerUser function from firebase-login.js
+    registerUser(email, password, displayName).catch(error => {
+        errorElement.textContent = error.message;
+        errorElement.style.display = 'block';
+    });
+});
+</script>
+{% endblock %}
